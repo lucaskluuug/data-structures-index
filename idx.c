@@ -7,14 +7,12 @@
 #define NAME 170
 #define ID 160
 #define CATEGORY 30
-#define RATING 3
-#define RATING_COUNT 10
 #define INSTALLS 15
 #define FREE 5
 #define SIZE 18
 #define LAST_UPDATED 9
 #define CONTENT_RATING 15
-#define TOTAL NAME+ID+CATEGORY+RATING+RATING_COUNT+INSTALLS+FREE+SIZE+LAST_UPDATED+CONTENT_RATING
+#define TOTAL NAME+ID+CATEGORY+INSTALLS+FREE+SIZE+LAST_UPDATED+CONTENT_RATING
 
 struct Record {
     int number;
@@ -54,12 +52,9 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
 
     // Read the CSV file header (ignored)
     char header[TOTAL]; // Big enough to store the header
-    puts(fgets(header, sizeof(header), csvFile)); //Showing header
-
-    char line[TOTAL + 2]; // +2 for comma and newline
+    fgets(header, sizeof(header), csvFile);
     
-    //TEST
-    int teste = 0;
+    char line[TOTAL];
     
     // Read and convert each line from the CSV file into a struct and write it to the binary file
     struct Record record;
@@ -78,10 +73,11 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
         fillWithSpaces(record.content_rating, CONTENT_RATING);
         
         //TEST
+        /*teste = 0
         if(teste <5){
             printf("\nNum=%d\n Name=%s\n Id=%s\n Category=%s\n Rating=%f\n RatingCount=%d\n Installs=%s\n Free=%s\n Size=%s\n LastUpdate=%s\n Content=%s\n", record.number, record.name, record.id, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
             teste++;
-        }
+        }*/
 
         fwrite(&record, sizeof(struct Record), 1, binFile);
     }
