@@ -21,8 +21,8 @@ struct Record {
     char name[NAME];
     char id[ID];
     char category[CATEGORY];
-    char rating[RATING];
-    char rating_count[RATING_COUNT];
+    float rating;
+    int rating_count;
     char installs[INSTALLS];
     char free[FREE];
     char size[SIZE];
@@ -64,25 +64,22 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
     // Read and convert each line from the CSV file into a struct and write it to the binary file
     struct Record record;
     while (fgets(line, sizeof(line), csvFile)) {
-        sscanf(line, "%d,%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^,],%[^\n]",
-                  &record.number, record.name, record.id, record.category, record.rating, record.rating_count,
+        sscanf(line, "%d,%[^,],%[^,],%[^,],%f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
+                  &record.number, record.name, record.id, record.category, &record.rating, &record.rating_count,
                   record.installs, record.free, record.size, record.last_updated, record.content_rating);
         
         fillWithSpaces(record.name, NAME);
         fillWithSpaces(record.id, ID);
         fillWithSpaces(record.category, CATEGORY);
-        fillWithSpaces(record.rating, RATING);
-        fillWithSpaces(record.rating_count, RATING_COUNT);
         fillWithSpaces(record.installs, INSTALLS);
         fillWithSpaces(record.free, FREE);
         fillWithSpaces(record.size, SIZE);
         fillWithSpaces(record.last_updated, LAST_UPDATED);
         fillWithSpaces(record.content_rating, CONTENT_RATING);
         
-
         //TEST
-        if(teste == 0){
-            printf("\n%d\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n", record.number, record.name, record.id, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
+        if(teste <5){
+            printf("\nNum=%d\n Name=%s\n Id=%s\n Category=%s\n Rating=%f\n RatingCount=%d\n Installs=%s\n Free=%s\n Size=%s\n LastUpdate=%s\n Content=%s\n", record.number, record.name, record.id, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
             teste++;
         }
 
