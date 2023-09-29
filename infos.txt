@@ -1,0 +1,37 @@
+Indíces
+    1. Number
+        1.1 Type: File
+        1.2 Format: <Number>^<deslocamento>
+        *Sequencial-indexado
+    2. Name
+        2.1 Type: File
+        2.2 Format: <Name>^<deslocamento>
+        *Sequencial-indexado
+    3. Category
+        3.1 Type: Memory
+        3.2 Content: AVL
+        3.3 Format: {
+            "Hash": "<Category>",
+            "First": *{
+                "ID": <Number>,
+                "Name": <Name>,
+                "Next": * (ponteiro para o próximo registro da categoria)
+            }(ponteiro para o primeiro registro da categoria)(Lista Encadeada),
+        }
+    4. Rating
+        4.1 Type: Memory
+        4.2 Content: Lista Encadeada
+        4.3 Format: {
+            "Hash": "<Rating>",
+            "First": *{
+                "ID": <Number>,
+                "Name": <Name>,
+                "Next": * (ponteiro para o próximo registro da categoria)
+            }(ponteiro para o primeiro registro da categoria)(Lista Encadeada),
+        }
+
+Perguntas 
+    1. Quais os apps da Category X (Indíces: 3 -> 1/2)
+    2. Quantos app tem na Category X (Indíces: 3 -> 1/2)
+    3. Quais os apps tem Rate superior à X (Indíces: 4 -> 1/2)
+    4. Quantos app tem Rate superior à X (Indíces: 4 -> 1/2)
