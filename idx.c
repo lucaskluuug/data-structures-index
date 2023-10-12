@@ -377,7 +377,10 @@ struct TreeNode *createAVLFromBinaryFile(const char *binaryFile) {
 
     struct Record record;
     while (fread(&record, sizeof(struct Record), 1, binFile)) {
-        root = insertTreeNode(root, record.category, record.number);
+        //Limite de memória
+        if(record.number<100000){
+            root = insertTreeNode(root, record.category, record.number);
+        }
     }
 
     printf("AVL created successfully.\n");
@@ -407,10 +410,8 @@ int main() {
     struct TreeNode *root = createAVLFromBinaryFile(binaryFile);
 
 
-
-    /*
     //Procurar números em uma categoria específica
-    char searchedCategory[CATEGORY] = "Games";
+    char searchedCategory[CATEGORY] = "Education                    ";
     struct RecordNumberNode *categoryNumbers = searchCategory(root, searchedCategory);
     if (categoryNumbers) {
         printf("Numbers in category '%s':\n", searchedCategory);
@@ -422,7 +423,6 @@ int main() {
     } else {
         printf("Category '%s' not found.\n", searchedCategory);
     }
-    */
     
 
 
