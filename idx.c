@@ -46,6 +46,24 @@ struct TreeNode {
     int height;
 };
 
+struct RatingIndexHashNode {
+    int hash;
+    int count;
+    struct RatingIndexNode *firts;
+    struct RatingIndexHashNode *next;
+};
+
+struct RatingIndexNode {
+    int number;
+    float rating;
+    struct RatingIndexNode *last;
+    struct RatingIndexNode *next;
+};
+
+
+// Global Variables
+struct RatingIndexHashNode *hashIndex = NULL;
+
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
 // Binary Search
@@ -135,7 +153,7 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
     // Read and convert each line from the CSV file into a struct and write it to the binary file
     struct Record record;
     while (fgets(line, sizeof(line), csvFile)) {
-        sscanf(line, "%d,%[^,],%[^,],%[^,],%f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
+        sscanf(line, "%d,%[^,],%[^,],%[^,],%.1f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
                   &record.number, record.name, record.id, record.category, &record.rating, &record.rating_count,
                   record.installs, record.free, record.size, record.last_updated, record.content_rating);
         
@@ -389,16 +407,113 @@ struct TreeNode *createAVLFromBinaryFile(const char *binaryFile) {
     return root;
 }
 
+//---------------------------------------------------------------------------------------------------------------------------------------------
+//Indice baseado no campo "Rating", em memória
+//Cria um novo nodo de cabeçalho
+struct RatingIndexHashNode * newHashNode(int hash, struct RatingIndexHashNode *next){
+    struct RatingIndexHashNode *new = (struct RatingIndexHashNode*)malloc(sizeof(struct RatingIndexHashNode));
+    new->hash = hash;
+    new->next = next;
+    new->count = 0;
+    new->firts = NULL;
+
+    return new;
+}
+//Cria um novo nodo para o registro
+struct RatingIndexNode * newRatingNode(int number, float rating, struct RatingIndexNode *last) {
+    struct RatingIndexNode *new = (struct RatingIndexNode*)malloc(sizeof(struct RatingIndexNode));
+    new->number = number;
+    new->rating = rating;
+    new->last = last;
+    new->next = NULL;
+
+    return new;
+}
+//Grea o HASH
+int getHash(struct Record record){
+    return record.rating*10;
+}
+//Cria o índice de Rating em memória
+void createIndexMemoryByRating(const char *binFileName) {
+    FILE *binFile = fopen(binFileName, "rb");
+    if (!binFile) {
+        printf("Error opening the binary file.\n");
+        return;
+    }
+
+    struct Record record;
+
+    // int i = 0; /*DEBUG*/
+
+    while (
+        // i<10000 &&  /*DEBUG*/
+        fread(&record, sizeof(struct Record), 1, binFile)
+    ) {
+        
+        // i++; /*DEBUG*/
+        
+        int hash = getHash(record);
+
+        if (hashIndex == NULL) {
+            hashIndex = newHashNode(hash, NULL);
+            hashIndex->firts = newRatingNode(record.number, record.rating, NULL);
+            hashIndex->count = 1;
+        }
+        else {
+            struct RatingIndexHashNode *cur = hashIndex;
+            while(cur->next != NULL && cur->hash < hash && (cur->next)->hash < hash)
+                cur = cur->next;
+
+            if (cur->next != NULL && (cur->next)->hash == hash)
+                cur = cur->next;
+
+            if (cur->hash == hash) {
+                struct RatingIndexNode *curApp = cur->firts;
+                cur->count++;
+
+                while (curApp->next != NULL)
+                    curApp = curApp->next;
+
+                curApp->next = newRatingNode(record.number, record.rating, curApp);
+            }
+            else {
+                cur->next = newHashNode(hash, cur->next);
+                (cur->next)->firts = newRatingNode(record.number, record.rating, NULL);
+                (cur->next)->count = 1;
+            }
+        }
+    }
+
+    fclose(binFile);
+
+    printf("Index created successfully.\n");
+}
+void printIndexMemoryByRating() {
+    struct RatingIndexHashNode *curHash = hashIndex;
+    while (curHash != NULL) {
+        printf("\nHash: %d - Qtd: %d\n", curHash->hash, curHash->count);
+        
+        struct RatingIndexNode *cur = curHash->firts;
+        while(cur != NULL) {
+            printf("%d (%.1f) | ", cur->number, cur->rating);
+
+            cur = cur->next;
+        }
+
+        curHash = curHash->next;
+    }
+}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
 int main() {
     const char *textFile = "apps.csv";
     const char *binaryFile = "apps.bin";
-    const char *indexNumberFile = "idxnumber.bin";
+    // const char *indexNumberFile = "idxnumber.bin";
     
 
-    //Criação arquivo binário
-    createBinaryFile(textFile, binaryFile);
+    // //Criação arquivo binário
+    // createBinaryFile(textFile, binaryFile);
 
     //Criar arquivo sequencial indexado campo numero
     //createIndexFile(binaryFile, indexNumberFile);
@@ -406,25 +521,27 @@ int main() {
 
     
     
-    //Criar AVL
-    struct TreeNode *root = createAVLFromBinaryFile(binaryFile);
+    // //Criar AVL
+    // struct TreeNode *root = createAVLFromBinaryFile(binaryFile);
 
 
-    //Procurar números em uma categoria específica
-    char searchedCategory[CATEGORY] = "Education                    ";
-    struct RecordNumberNode *categoryNumbers = searchCategory(root, searchedCategory);
-    if (categoryNumbers) {
-        printf("Numbers in category '%s':\n", searchedCategory);
-        struct RecordNumberNode *current = categoryNumbers;
-        while (current != NULL) {
-            printf("%d\n", current->number);
-            current = current->next;
-        }
-    } else {
-        printf("Category '%s' not found.\n", searchedCategory);
-    }
+    // //Procurar números em uma categoria específica
+    // char searchedCategory[CATEGORY] = "Education                    ";
+    // struct RecordNumberNode *categoryNumbers = searchCategory(root, searchedCategory);
+    // if (categoryNumbers) {
+    //     printf("Numbers in category '%s':\n", searchedCategory);
+    //     struct RecordNumberNode *current = categoryNumbers;
+    //     while (current != NULL) {
+    //         printf("%d\n", current->number);
+    //         current = current->next;
+    //     }
+    // } else {
+    //     printf("Category '%s' not found.\n", searchedCategory);
+    // }
     
 
+    // createIndexMemoryByRating(binaryFile);
+    // printIndexMemoryByRating();
 
     return 0;
 }
