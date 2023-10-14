@@ -3,6 +3,8 @@
 #include <string.h>
 #include <time.h>
 
+#define LIMIT 100000
+
 // Length
 #define NAME 170
 #define ID 160
@@ -67,56 +69,69 @@ struct RatingIndexHashNode *hashIndex = NULL;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
 // Binary Search
-void searchByNumber(const char *binaryFile, int targetNumber) {
-    FILE *binary = fopen(binaryFile, "rb");
+int searchByNumber(const char *binaryFile, int targetNumber, int structType) {
+    FILE *file = fopen(binaryFile, "rb");
 
-    if (binary == NULL) {
+    if (file == NULL) {
         perror("Error opening the binary file");
         exit(1);
     }
 
-    struct Record record;
+    void *record = NULL;
+    int recordSize = 0;
+
+    if (structType == 1) {
+        struct Record tempRecord;
+        recordSize = sizeof(struct Record);
+        record = &tempRecord;
+    } else if (structType == 2) {
+        struct Index tempIndex;
+        recordSize = sizeof(struct Index);
+        record = &tempIndex;
+    }
+
     int comparisons = 0;
     int found = 0;
 
-    fseek(binary, 0, SEEK_END);
-    long fileSize = ftell(binary); // Get the file size in bytes
-    long recordSize = sizeof(struct Record);
-
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
     long start = 0;
     long end = (fileSize / recordSize) - 1;
 
     while (start <= end) {
         long middle = (start + end) / 2;
-        fseek(binary, middle * recordSize, SEEK_SET); // Move to the middle of the file
-
-        fread(&record, sizeof(struct Record), 1, binary);
+        fseek(file, middle * recordSize, SEEK_SET);
+        fread(record, recordSize, 1, file);
         comparisons++;
 
-        printf("Number: %d\n", record.number);
-        printf("Comparisons: %d\n\n", comparisons);
-
-        if (record.number == targetNumber) {
-            found = 1;
-            break;
-        } else if (record.number < targetNumber) {
-            start = middle + 1;
-        } else {
-            end = middle - 1;
+        if (structType == 1) {
+            struct Record *record1 = (struct Record *)record;
+            if (record1->number == targetNumber) {
+                found = 1;
+                fclose(file);
+                return middle;
+            } else if (record1->number < targetNumber) {
+                start = middle + 1;
+            } else {
+                end = middle - 1;
+            }
+        } else if (structType == 2) {
+            struct Index *record2 = (struct Index *)record;
+            if (record2->number == targetNumber) {
+                found = 1;
+                fclose(file);
+                return record2->offset;
+            } else if (record2->number < targetNumber) {
+                start = middle + 1;
+            } else {
+                end = middle - 1;
+            }
         }
     }
 
-    if (found) {
-        printf("Record found:\n");
-        printf("Number: %d\n", record.number);
-        printf("Name: %s\n", record.name);
-        // Print other fields of the struct as needed
-        printf("Comparisons: %d\n", comparisons);
-    } else {
-        printf("Record with number %d not found.\n", targetNumber);
-    }
+    fclose(file);
 
-    fclose(binary);
+    return -1; // Indica que o registro não foi encontrado
 }
 
 
@@ -166,13 +181,6 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
         fillWithSpaces(record.last_updated, LAST_UPDATED);
         fillWithSpaces(record.content_rating, CONTENT_RATING);
         
-        //TEST
-        /*teste = 0
-        if(teste <5){
-            printf("\nNum=%d\n Name=%s\n Id=%s\n Category=%s\n Rating=%f\n RatingCount=%d\n Installs=%s\n Free=%s\n Size=%s\n LastUpdate=%s\n Content=%s\n", record.number, record.name, record.id, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
-            teste++;
-        }*/
-
         fwrite(&record, sizeof(struct Record), 1, binFile);
     }
 
@@ -384,7 +392,7 @@ struct RecordNumberNode *searchCategory(struct TreeNode *root, char category[CAT
     }
 }
 //Criar AVL
-struct TreeNode *createAVLFromBinaryFile(const char *binaryFile) {
+struct TreeNode *createAVL(const char *binaryFile) {
     struct TreeNode *root = NULL;
     FILE *binFile = fopen(binaryFile, "rb");
 
@@ -396,7 +404,7 @@ struct TreeNode *createAVLFromBinaryFile(const char *binaryFile) {
     struct Record record;
     while (fread(&record, sizeof(struct Record), 1, binFile)) {
         //Limite de memória
-        if(record.number<100000){
+        if(record.number<LIMIT){
             root = insertTreeNode(root, record.category, record.number);
         }
     }
@@ -504,40 +512,93 @@ void printIndexMemoryByRating() {
     }
 }
 
+void funcCase1(struct TreeNode *rootAVL, const char *indexNumberFile, const char *binFile){
+    char searchedCategory[CATEGORY] = "Education                    "; 
+    struct RecordNumberNode *categoryNumbers = searchCategory(rootAVL, searchedCategory);
+    if (categoryNumbers) {
+        printf("Games in the '%s' category:\n", searchedCategory);
+        struct RecordNumberNode *current = categoryNumbers;
+        while (current != NULL) {
+            int targetNumber = current->number;
+            
+            // Consultar o arquivo de índice para obter a posição do registro
+            long idxOffset = searchByNumber(indexNumberFile, targetNumber, 2);
+            
+            if (idxOffset != -1) {
+                FILE *binaryFile = fopen(binFile, "rb");
+                if (!binaryFile) {
+                    printf("Error opening the binary file.\n");
+                    break;
+                }
+                
+                fseek(binaryFile, idxOffset, SEEK_SET);
+                struct Record record;
+                if (fread(&record, sizeof(struct Record), 1, binaryFile)) {
+                    printf("Number: %d - Name: %s\n", record.number, record.name);
+                }
+                
+                fclose(binaryFile);
+            } else {
+                printf("Record with number %d not found in the index.\n", targetNumber);
+            }
+
+            current = current->next;
+        }
+    } else {
+        printf("Category '%s' not found.\n", searchedCategory);
+    }
+}
+
+
+
+
+//---------------------------------------------------------------------------------------------------------------------------------------------
+void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binaryFile, const char *indexNumberFile){
+    int choice = 1;
+
+
+    do {
+        printf("1. What are the games into 'Education' category?\n2. Question 2\n3. Question 3\n4. Question 4\n\n");
+        scanf("%d", &choice);
+
+        switch (choice) {
+        case 1:
+            funcCase1(rootAVL, indexNumberFile, binaryFile);
+            break;
+        case 2:
+            break;
+        case 3:
+            break;
+        case 4:
+            break;
+        }
+    } while (choice!=0);
+}
+
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
 int main() {
     const char *textFile = "apps.csv";
     const char *binaryFile = "apps.bin";
-    // const char *indexNumberFile = "idxnumber.bin";
+    const char *indexNumberFile = "idxnumber.bin";
     
 
-    // //Criação arquivo binário
-    // createBinaryFile(textFile, binaryFile);
+    //Criação arquivo binário
+    createBinaryFile(textFile, binaryFile);
 
-    //Criar arquivo sequencial indexado campo numero
-    //createIndexFile(binaryFile, indexNumberFile);
+    //Criação do arquivo sequencial indexado campo numero
+    createIndexFile(binaryFile, indexNumberFile);
     //showIndexFile(indexNumberFile);
-
     
-    
-    // //Criar AVL
-    // struct TreeNode *root = createAVLFromBinaryFile(binaryFile);
+    //Criação da AVL
+    struct TreeNode *root = createAVL(binaryFile);
 
 
-    // //Procurar números em uma categoria específica
-    // char searchedCategory[CATEGORY] = "Education                    ";
-    // struct RecordNumberNode *categoryNumbers = searchCategory(root, searchedCategory);
-    // if (categoryNumbers) {
-    //     printf("Numbers in category '%s':\n", searchedCategory);
-    //     struct RecordNumberNode *current = categoryNumbers;
-    //     while (current != NULL) {
-    //         printf("%d\n", current->number);
-    //         current = current->next;
-    //     }
-    // } else {
-    //     printf("Category '%s' not found.\n", searchedCategory);
-    // }
+    //Mostrar menu
+    showMenu(root, textFile, binaryFile, indexNumberFile);
+
+
+
     
 
     // createIndexMemoryByRating(binaryFile);
@@ -545,63 +606,3 @@ int main() {
 
     return 0;
 }
-
-
-//---------------------------------------------------------------------------------------------------------------------------------------------
-/*Pesquisa binária pelo nome
-
-    searchByName(binaryFile, "Name");
-
-void searchByName(const char *binaryFile, const char *searchName) {
-    FILE *binary = fopen(binaryFile, "rb");
-
-    if (binary == NULL) {
-        perror("Error opening the binary file");
-        exit(1);
-    }
-
-    struct Record record;
-    int comparisons = 0;
-    int found = 0;
-
-    fseek(binary, 0, SEEK_END); // Move the cursor to the end of the file
-    long fileSize = ftell(binary); // Get the file size in bytes
-    long recordSize = sizeof(struct Record);
-
-    long start = 0;
-    long end = (fileSize / recordSize) - 1;
-
-    while (start <= end) {
-        long middle = (start + end) / 2;
-        fseek(binary, middle * recordSize, SEEK_SET); // Move to the middle of the file
-
-        fread(&record, sizeof(struct Record), 1, binary);
-        comparisons++;
-
-        printf("Name: %s\n", record.name);
-        printf("Comparisons: %d\n\n", comparisons);
-
-        int comparison = strncmp(record.name, searchName, strlen(searchName));
-
-        if (comparison == 0) {
-            found = 1;
-            break;
-        } else if (comparison < 0) {
-            start = middle + 1;
-        } else {
-            end = middle - 1;
-        }
-    }
-
-    if (found) {
-        printf("Record found:\n");
-        printf("Name: %s\n", record.name);
-        printf("Genre: %s\n", record.genre);
-        printf("Comparisons: %d\n", comparisons);
-    } else {
-        printf("Record not found.\n");
-    }
-
-    fclose(binary);
-}
-*/
