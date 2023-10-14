@@ -558,7 +558,7 @@ void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binary
 
 
     do {
-        printf("1. What are the games into 'Education' category?\n2. Question 2\n3. Question 3\n4. Question 4\n\n");
+        printf("1. What are the apps into 'Education' category?\n2. Question 2\n3. Question 3\n4. Question 4\n\n");
         scanf("%d", &choice);
 
         switch (choice) {
