@@ -16,8 +16,6 @@
 #define CONTENT_RATING 15
 #define TOTAL NAME+ID+CATEGORY+INSTALLS+FREE+SIZE+LAST_UPDATED+CONTENT_RATING
 
-#define LIMIT 500000
-
 
 struct Record {
     int number;
