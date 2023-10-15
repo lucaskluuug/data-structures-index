@@ -16,6 +16,9 @@
 #define CONTENT_RATING 15
 #define TOTAL NAME+ID+CATEGORY+INSTALLS+FREE+SIZE+LAST_UPDATED+CONTENT_RATING
 
+#define LIMIT 500000
+
+
 struct Record {
     int number;
     char name[NAME];
@@ -60,6 +63,16 @@ struct RatingIndexNode {
     float rating;
     struct RatingIndexNode *last;
     struct RatingIndexNode *next;
+};
+
+struct IndexName {
+    char name[NAME];
+    long offset;
+};
+
+struct IndexNameList {
+    struct IndexName *ix;
+    struct IndexNameList *next;
 };
 
 
@@ -511,6 +524,121 @@ void printIndexMemoryByRating() {
         curHash = curHash->next;
     }
 }
+//---------------------------------------------------------------------------------------------------------------------------------------------
+//Arquivo de indice baseado no campo "Nome"
+//Cria um novo nodo para o registro
+struct IndexName *newIndexNameStruct(char *name, long offSet) {
+    struct IndexName *new = (struct IndexName*)malloc(sizeof(struct IndexName));
+    strcpy(new->name, name);
+    fillWithSpaces(new->name, NAME);
+    new->offset = offSet;
+
+    return new;
+}
+//Cria o índice de Name em disco
+void createIndexFileByName(const char *binFileName, const char *indexFileName) {
+    FILE *binFile = fopen(binFileName, "rb");
+    if (!binFile) {
+        printf("Error opening the binary file.\n");
+        return;
+    }
+
+    FILE *indexFile = fopen(indexFileName, "wb");
+    if (!indexFile) {
+        printf("Error creating the index file.\n");
+        fclose(binFile);
+        return;
+    }
+
+    struct Record record;
+    long binOffset = 0;
+
+    int i, j;
+
+    for (i = 65; i <= 91; i++) {
+
+        j = 0; /*DEBUG*/
+
+        fseek(binFile, 0, SEEK_SET);
+        struct IndexNameList *indexList = NULL;
+
+        while (
+            // j<=LIMIT &&  /*DEBUG*/
+            fread(&record, sizeof(struct Record), 1, binFile)
+        ) {
+            
+            j++; /*DEBUG*/
+
+            if (record.name[0] == i || (i == 91 && record.name[0] < 65 && record.name[0] > 90)) {
+                struct IndexName *index = newIndexNameStruct(record.name, binOffset);
+
+                if (indexList == NULL) {
+                    indexList = (struct IndexNameList*)malloc(sizeof(struct IndexNameList));
+                    indexList->ix = index;
+                    indexList->next = NULL;
+                }
+                else {
+                    struct IndexNameList *cur = indexList;
+                    struct IndexNameList *ant = NULL;
+                    while(cur->next != NULL && strcmp((cur->ix)->name, index->name) < 0){
+                        ant = cur;
+                        cur = cur->next;
+                    }
+
+                    struct IndexNameList *new = (struct IndexNameList*)malloc(sizeof(struct IndexNameList));
+                    new->ix = index;
+
+                    int cmp = strcmp((cur->ix)->name, index->name);
+
+                    if (strcmp((cur->ix)->name, index->name) > 0) {
+                        new->next = cur->next;
+
+                        if (ant != NULL)
+                            ant->next = new;
+                        else {
+                            indexList = new;
+                            new->next = cur;
+                        }
+                    }
+                    else {
+                        new->next = NULL;
+                        cur->next = new;
+                    }                    
+                }
+            }            
+
+            binOffset += sizeof(struct Record);
+        }
+
+        while(indexList!=NULL) {
+            fwrite(indexList->ix, sizeof(struct IndexName), 1, indexFile);
+            indexList = indexList->next;
+        }
+    }
+
+    fclose(binFile);
+    fclose(indexFile);
+
+    printf("Index created successfully.\n");
+}
+void printIndexFileByName(const char *indexFileName) {
+    FILE *indexFile = fopen(indexFileName, "rb");
+    if (!indexFile) {
+        printf("Error opening the index file.\n");
+        return;
+    }
+
+    struct IndexName index;
+    
+    while (fread(&index, sizeof(struct IndexName), 1, indexFile)) {
+        printf("Name: %s | OffSet: %d\n", index.name, index.offset);
+    }
+
+    fclose(indexFile);
+
+}
+
+
 
 void funcCase1(struct TreeNode *rootAVL, const char *indexNumberFile, const char *binFile){
     char searchedCategory[CATEGORY] = "Education                    "; 
