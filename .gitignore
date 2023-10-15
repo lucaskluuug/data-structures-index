@@ -1,4 +1,4 @@
 apps.csv
-apps.bin
+*.bin
 .vscode/*
 dsi*
