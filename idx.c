@@ -179,7 +179,7 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
     // Read and convert each line from the CSV file into a struct and write it to the binary file
     struct Record record;
     while (fgets(line, sizeof(line), csvFile)) {
-        sscanf(line, "%d,%[^,],%[^,],%[^,],%.1f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
+        sscanf(line, "%d,%[^,],%[^,],%[^,],%f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
                   &record.number, record.name, record.id, record.category, &record.rating, &record.rating_count,
                   record.installs, record.free, record.size, record.last_updated, record.content_rating);
         
@@ -635,9 +635,8 @@ void printIndexFileByName(const char *indexFileName) {
     fclose(indexFile);
 
 }
-
-
-
+//---------------------------------------------------------------------------------------------------------------------------------------------
+// Case 1
 void funcCase1(struct TreeNode *rootAVL, const char *indexNumberFile, const char *binFile){
     char searchedCategory[CATEGORY] = "Education                    "; 
     struct RecordNumberNode *categoryNumbers = searchCategory(rootAVL, searchedCategory);
@@ -675,16 +674,40 @@ void funcCase1(struct TreeNode *rootAVL, const char *indexNumberFile, const char
     }
 }
 
+// Case 2
+void funcCase2(const char *indexNumberFile, const char *binFile, int targetNumber){
 
+    long idxOffset = searchByNumber(indexNumberFile, targetNumber, 2);
+    
+    if (idxOffset != -1) {
+        FILE *binaryFile = fopen(binFile, "rb");
+        if (!binaryFile) {
+            printf("Error opening the binary file.\n");
+        }
+        
+        fseek(binaryFile, idxOffset, SEEK_SET);
+        struct Record record;
+        if (fread(&record, sizeof(struct Record), 1, binaryFile)) {
+            printf("Infos:\n\nNumber: %d\nName: %s\nCategory: %s\nRating: %f\nRating count: %d\nInstalls: %s\nFree: %s\nSize: %s\nLast updated: %s\nContent rating: %s\n\n\n", record.number, record.name, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
+        }
+        
+        fclose(binaryFile);
+    } else {
+        printf("Record with number %d not found in the index.\n", targetNumber);
+    }
+}
 
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
 void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binaryFile, const char *indexNumberFile){
     int choice = 1;
 
+    //Case 2
+    int number;
+
 
     do {
-        printf("1. What are the apps into 'Education' category?\n2. Question 2\n3. Question 3\n4. Question 4\n\n");
+        printf("1. What are the apps into 'Education' category?\n2. What are the informations about an specific app?\n3. Question 3\n4. Question 4\n\n");
         scanf("%d", &choice);
 
         switch (choice) {
@@ -692,6 +715,9 @@ void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binary
             funcCase1(rootAVL, indexNumberFile, binaryFile);
             break;
         case 2:
+            printf("What is the app number?\n");
+            scanf("%d", &number);
+            funcCase2(indexNumberFile, binaryFile, number);
             break;
         case 3:
             break;
