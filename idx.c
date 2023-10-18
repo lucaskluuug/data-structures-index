@@ -77,6 +77,59 @@ struct IndexNameList {
 // Global Variables
 struct RatingIndexHashNode *hashIndex = NULL;
 
+//---------------------------------------------------------------------------------------------------------------------------------------------
+//Arquivo binário
+void fillWithSpaces(char field[], int size) {
+    size_t field_len = strlen(field);
+    for (size_t i = field_len; i < size; i++) {
+        field[i] = ' ';
+    }
+    field[size - 1] = '\0';
+}
+
+void createBinaryFile(const char *csvFileName, const char *binFileName) {
+    FILE *csvFile = fopen(csvFileName, "r");
+    if (!csvFile) {
+        printf("Error opening the CSV file.\n");
+        return;
+    }
+
+    FILE *binFile = fopen(binFileName, "wb");
+    if (!binFile) {
+        printf("Error creating the binary file.\n");
+        fclose(csvFile);
+        return;
+    }
+
+    // Read the CSV file header (ignored)
+    char header[TOTAL];
+    fgets(header, sizeof(header), csvFile);
+    
+    char line[TOTAL];
+    
+    // Read and convert each line from the CSV file into a struct and write it to the binary file
+    struct Record record;
+    while (fgets(line, sizeof(line), csvFile)) {
+        sscanf(line, "%d,%[^,],%[^,],%[^,],%f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
+                  &record.number, record.name, record.id, record.category, &record.rating, &record.rating_count,
+                  record.installs, record.free, record.size, record.last_updated, record.content_rating);
+        
+        fillWithSpaces(record.name, NAME);
+        fillWithSpaces(record.id, ID);
+        fillWithSpaces(record.category, CATEGORY);
+        fillWithSpaces(record.installs, INSTALLS);
+        fillWithSpaces(record.free, FREE);
+        fillWithSpaces(record.size, SIZE);
+        fillWithSpaces(record.last_updated, LAST_UPDATED);
+        fillWithSpaces(record.content_rating, CONTENT_RATING);
+        
+        fwrite(&record, sizeof(struct Record), 1, binFile);
+    }
+
+    fclose(csvFile);
+    fclose(binFile);
+    printf("Binary file created successfully.\n");
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
 // Binary Search
@@ -145,61 +198,28 @@ int searchByNumber(const char *binaryFile, int targetNumber, int structType) {
     return -1; // Indica que o registro não foi encontrado
 }
 
-
-//---------------------------------------------------------------------------------------------------------------------------------------------
-//Arquivo binário
-void fillWithSpaces(char field[], int size) {
-    size_t field_len = strlen(field);
-    for (size_t i = field_len; i < size; i++) {
-        field[i] = ' ';
-    }
-    field[size - 1] = '\0';
-}
-
-void createBinaryFile(const char *csvFileName, const char *binFileName) {
-    FILE *csvFile = fopen(csvFileName, "r");
-    if (!csvFile) {
-        printf("Error opening the CSV file.\n");
-        return;
-    }
-
-    FILE *binFile = fopen(binFileName, "wb");
+int searchByName(const char *indexFileName, char *name){
+    FILE *binFile = fopen(indexFileName, "rb");
     if (!binFile) {
-        printf("Error creating the binary file.\n");
-        fclose(csvFile);
-        return;
+        printf("Error opening the binary file.\n");
+        return 0;
     }
 
-    // Read the CSV file header (ignored)
-    char header[TOTAL];
-    fgets(header, sizeof(header), csvFile);
-    
-    char line[TOTAL];
-    
-    // Read and convert each line from the CSV file into a struct and write it to the binary file
-    struct Record record;
-    while (fgets(line, sizeof(line), csvFile)) {
-        sscanf(line, "%d,%[^,],%[^,],%[^,],%f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
-                  &record.number, record.name, record.id, record.category, &record.rating, &record.rating_count,
-                  record.installs, record.free, record.size, record.last_updated, record.content_rating);
-        
-        fillWithSpaces(record.name, NAME);
-        fillWithSpaces(record.id, ID);
-        fillWithSpaces(record.category, CATEGORY);
-        fillWithSpaces(record.installs, INSTALLS);
-        fillWithSpaces(record.free, FREE);
-        fillWithSpaces(record.size, SIZE);
-        fillWithSpaces(record.last_updated, LAST_UPDATED);
-        fillWithSpaces(record.content_rating, CONTENT_RATING);
-        
-        fwrite(&record, sizeof(struct Record), 1, binFile);
+    fillWithSpaces(name, NAME);
+
+    struct IndexName record;
+    long recordSize =  sizeof(struct IndexName);
+
+    while (fread(&record, sizeof(struct IndexName), 1, binFile)) {
+        if (strcmp(record.name, name) == 0){
+            fclose(binFile);
+            return record.offset;
+        }
     }
 
-    fclose(csvFile);
     fclose(binFile);
-    printf("Binary file created successfully.\n");
+    return -1;
 }
-
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
 //Arquivo de indice baseado no campo "Number"
@@ -462,14 +482,14 @@ void createIndexMemoryByRating(const char *binFileName) {
 
     struct Record record;
 
-    // int i = 0; /*DEBUG*/
+    int i = 0; /*DEBUG*/
 
     while (
-        // i<10000 &&  /*DEBUG*/
+        i<LIMIT &&  /*DEBUG*/
         fread(&record, sizeof(struct Record), 1, binFile)
     ) {
         
-        // i++; /*DEBUG*/
+        i++; /*DEBUG*/
         
         int hash = getHash(record);
 
@@ -505,7 +525,7 @@ void createIndexMemoryByRating(const char *binFileName) {
 
     fclose(binFile);
 
-    printf("Index created successfully.\n");
+    printf("Hash Index created successfully.\n");
 }
 void printIndexMemoryByRating() {
     struct RatingIndexHashNode *curHash = hashIndex;
@@ -548,12 +568,14 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
         return;
     }
 
-    struct Record record;
-    long binOffset = 0;
+    int i, j, x;
 
-    int i, j;
+    x = 0;
 
     for (i = 65; i <= 91; i++) {
+            
+        struct Record record;
+        long binOffset = 0;
 
         j = 0; /*DEBUG*/
 
@@ -567,7 +589,7 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
             
             j++; /*DEBUG*/
 
-            if (record.name[0] == i || (i == 91 && record.name[0] < 65 && record.name[0] > 90)) {
+            if (record.name[0] == i || (i == 91 && (record.name[0] < 65 || record.name[0] > 90))) {
                 struct IndexName *index = newIndexNameStruct(record.name, binOffset);
 
                 if (indexList == NULL) {
@@ -578,30 +600,31 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
                 else {
                     struct IndexNameList *cur = indexList;
                     struct IndexNameList *ant = NULL;
-                    while(cur->next != NULL && strcmp((cur->ix)->name, index->name) < 0){
+                    while(cur->next != NULL && strcmp((cur->ix)->name, index->name) <= 0)
+                    {
                         ant = cur;
                         cur = cur->next;
                     }
 
+                    x++;
+
                     struct IndexNameList *new = (struct IndexNameList*)malloc(sizeof(struct IndexNameList));
                     new->ix = index;
 
-                    int cmp = strcmp((cur->ix)->name, index->name);
-
-                    if (strcmp((cur->ix)->name, index->name) > 0) {
-                        new->next = cur->next;
-
-                        if (ant != NULL)
-                            ant->next = new;
-                        else {
-                            indexList = new;
-                            new->next = cur;
-                        }
+                    if (cur->next == NULL) {
+                        new->next = NULL;
+                        cur->next = new; 
                     }
                     else {
-                        new->next = NULL;
-                        cur->next = new;
-                    }                    
+                        if (ant != NULL) {
+                                ant->next = new;
+                                new->next = cur;
+                        }
+                        else {
+                            new->next = cur;
+                            indexList = new;
+                        }
+                    }                
                 }
             }            
 
@@ -611,13 +634,14 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
         while(indexList!=NULL) {
             fwrite(indexList->ix, sizeof(struct IndexName), 1, indexFile);
             indexList = indexList->next;
+                // x++;
         }
     }
 
     fclose(binFile);
     fclose(indexFile);
 
-    printf("Index created successfully.\n");
+    printf("Index created successfully. Registers: %ld.\n", x);
 }
 void printIndexFileByName(const char *indexFileName) {
     FILE *indexFile = fopen(indexFileName, "rb");
@@ -627,10 +651,14 @@ void printIndexFileByName(const char *indexFileName) {
     }
 
     struct IndexName index;
+    int i = 0;    
     
     while (fread(&index, sizeof(struct IndexName), 1, indexFile)) {
-        printf("Name: %s | OffSet: %d\n", index.name, index.offset);
+        printf("Name: %s | OffSet: %ld\n", index.name, index.offset);
+        i++;
     }
+
+    printf("Registers: %d", i);
 
     fclose(indexFile);
 
@@ -697,17 +725,50 @@ void funcCase2(const char *indexNumberFile, const char *binFile, int targetNumbe
     }
 }
 
+void funcCase3(const char *binFile, float rate){
+    struct RatingIndexHashNode *curHash = hashIndex;
+    
+    printf("App's: ");
+    while (curHash != NULL) {
+        if (curHash->hash > (rate*10)) {
+            struct RatingIndexNode *cur = curHash->firts;
 
+            while (cur != NULL) {
+                printf("App number: %d - Rate: %.1f\n", cur->number, cur->rating);
+                cur = cur->next;
+            }
+        }
+
+        curHash = curHash->next;
+    }
+}
+
+void funcCase4(const char *indexNameFile, const char *binFile, char *name){
+    long idxOffset = searchByName(indexNameFile, name);
+
+    if (idxOffset != -1) {
+        FILE *binaryFile = fopen(binFile, "rb");
+        if (!binaryFile) {
+            printf("Error opening the binary file.\n");
+        }
+        
+        fseek(binaryFile, idxOffset, SEEK_SET);
+        struct Record record;
+        if (fread(&record, sizeof(struct Record), 1, binaryFile)) {
+            printf("Infos:\n\nNumber: %d\nName: %s\nCategory: %s\nRating: %f\nRating count: %d\nInstalls: %s\nFree: %s\nSize: %s\nLast updated: %s\nContent rating: %s\n\n\n", record.number, record.name, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
+        }
+        
+        fclose(binaryFile);
+    } else {
+        printf("Record with number %s not found in the index.\n", name);
+    }
+}
 //---------------------------------------------------------------------------------------------------------------------------------------------
-void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binaryFile, const char *indexNumberFile){
-    int choice = 1;
-
-    //Case 2
-    int number;
-
+void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binaryFile, const char *indexNumberFile, const char *indexNameFile){
+    int choice = 0;    
 
     do {
-        printf("1. What are the apps into 'Education' category?\n2. What are the informations about an specific app?\n3. Question 3\n4. Question 4\n\n");
+        printf("1. What are the apps into 'Education' category?\n2. What are the informations about an specific app by name?\n3. What are the numbers of apps rated higher than X?\n4. What are the informations about an specific app by name\n\n");
         scanf("%d", &choice);
 
         switch (choice) {
@@ -716,45 +777,68 @@ void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binary
             break;
         case 2:
             printf("What is the app number?\n");
+    
+            int number;
             scanf("%d", &number);
             funcCase2(indexNumberFile, binaryFile, number);
             break;
         case 3:
+            printf("What is the app rate?\n");
+    
+            float rate;
+            scanf("%f", &rate);
+            funcCase3(binaryFile, rate);
             break;
         case 4:
+            printf("What is the app name?\n");
+
+            char name[NAME];
+            gets(name);
+            gets(name);
+            funcCase4(indexNameFile, binaryFile, name);
             break;
+        default:
+            choice = 0;
+            printf("Invalid choice");
         }
     } while (choice!=0);
 }
 
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        printf("Error: <Generate .bin files (0/1)>");
+        exit(0);
+    }
+
     const char *textFile = "apps.csv";
     const char *binaryFile = "apps.bin";
     const char *indexNumberFile = "idxnumber.bin";
-    
+    const char *indexNameFile = "namesIndex.bin";
 
-    //Criação arquivo binário
-    createBinaryFile(textFile, binaryFile);
+    if (atoi(argv[1]) == 1) {
+        // Criação arquivo binário
+        createBinaryFile(textFile, binaryFile);
 
-    //Criação do arquivo sequencial indexado campo numero
-    createIndexFile(binaryFile, indexNumberFile);
-    //showIndexFile(indexNumberFile);
-    
+        //Criação do arquivo sequencial indexado campo numero
+        createIndexFile(binaryFile, indexNumberFile);
+        //showIndexFile(indexNumberFile);
+        
+        //Criação do arquivo indexado campo Name
+        createIndexFileByName(binaryFile, indexNameFile);
+        //printIndexFileByName();
+    }
+
     //Criação da AVL
     struct TreeNode *root = createAVL(binaryFile);
 
+    //Criação da Hash Table
+    createIndexMemoryByRating(binaryFile);
+
 
     //Mostrar menu
-    showMenu(root, textFile, binaryFile, indexNumberFile);
-
-
-
-    
-
-    // createIndexMemoryByRating(binaryFile);
-    // printIndexMemoryByRating();
+    showMenu(root, textFile, binaryFile, indexNumberFile, indexNameFile);
 
     return 0;
 }
