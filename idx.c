@@ -14,10 +14,11 @@
 #define SIZE 18
 #define LAST_UPDATED 9
 #define CONTENT_RATING 15
-#define TOTAL NAME+ID+CATEGORY+INSTALLS+FREE+SIZE+LAST_UPDATED+CONTENT_RATING
+#define TOTAL NAME + ID + CATEGORY + INSTALLS + FREE + SIZE + LAST_UPDATED + CONTENT_RATING
 
-
-struct Record {
+// Structs
+struct Record
+{
     int number;
     char name[NAME];
     char id[ID];
@@ -31,17 +32,20 @@ struct Record {
     char content_rating[CONTENT_RATING];
 };
 
-struct Index {
+struct Index
+{
     int number;
     long offset;
 };
 
-struct RecordNumberNode {
+struct RecordNumberNode
+{
     int number;
     struct RecordNumberNode *next;
 };
 
-struct TreeNode {
+struct TreeNode
+{
     char category[CATEGORY];
     struct RecordNumberNode *recordNumbers;
     struct TreeNode *left;
@@ -49,71 +53,81 @@ struct TreeNode {
     int height;
 };
 
-struct RatingIndexHashNode {
+struct RatingIndexHashNode
+{
     int hash;
     int count;
     struct RatingIndexNode *firts;
     struct RatingIndexHashNode *next;
 };
 
-struct RatingIndexNode {
+struct RatingIndexNode
+{
     int number;
     float rating;
     struct RatingIndexNode *last;
     struct RatingIndexNode *next;
 };
 
-struct IndexName {
+struct IndexName
+{
     char name[NAME];
     long offset;
 };
 
-struct IndexNameList {
+struct IndexNameList
+{
     struct IndexName *ix;
     struct IndexNameList *next;
 };
-
 
 // Global Variables
 struct RatingIndexHashNode *hashIndex = NULL;
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
-//Arquivo binário
-void fillWithSpaces(char field[], int size) {
+// Fill with spaces to complete string
+void fillWithSpaces(char field[], int size)
+{
     size_t field_len = strlen(field);
-    for (size_t i = field_len; i < size; i++) {
+    for (size_t i = field_len; i < size; i++)
+    {
         field[i] = ' ';
     }
     field[size - 1] = '\0';
 }
 
-void createBinaryFile(const char *csvFileName, const char *binFileName) {
+// Create Binary file
+void createBinaryFile(const char *csvFileName, const char *binFileName)
+{
     FILE *csvFile = fopen(csvFileName, "r");
-    if (!csvFile) {
+    if (!csvFile)
+    {
         printf("Error opening the CSV file.\n");
         return;
     }
 
     FILE *binFile = fopen(binFileName, "wb");
-    if (!binFile) {
+    if (!binFile)
+    {
         printf("Error creating the binary file.\n");
         fclose(csvFile);
         return;
     }
 
-    // Read the CSV file header (ignored)
+    // Ignore header
     char header[TOTAL];
     fgets(header, sizeof(header), csvFile);
-    
+
     char line[TOTAL];
-    
+
     // Read and convert each line from the CSV file into a struct and write it to the binary file
     struct Record record;
-    while (fgets(line, sizeof(line), csvFile)) {
+    while (fgets(line, sizeof(line), csvFile))
+    {
         sscanf(line, "%d,%[^,],%[^,],%[^,],%f,%d,%[^,],%[^,],%[^,],%[^,],%[^\n]",
-                  &record.number, record.name, record.id, record.category, &record.rating, &record.rating_count,
-                  record.installs, record.free, record.size, record.last_updated, record.content_rating);
-        
+               &record.number, record.name, record.id, record.category, &record.rating, &record.rating_count,
+               record.installs, record.free, record.size, record.last_updated, record.content_rating);
+
         fillWithSpaces(record.name, NAME);
         fillWithSpaces(record.id, ID);
         fillWithSpaces(record.category, CATEGORY);
@@ -122,7 +136,7 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
         fillWithSpaces(record.size, SIZE);
         fillWithSpaces(record.last_updated, LAST_UPDATED);
         fillWithSpaces(record.content_rating, CONTENT_RATING);
-        
+
         fwrite(&record, sizeof(struct Record), 1, binFile);
     }
 
@@ -132,11 +146,13 @@ void createBinaryFile(const char *csvFileName, const char *binFileName) {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
-// Binary Search
-int searchByNumber(const char *binaryFile, int targetNumber, int structType) {
+// Binary Search by number field
+int searchByNumber(const char *binaryFile, int targetNumber, int structType)
+{
     FILE *file = fopen(binaryFile, "rb");
 
-    if (file == NULL) {
+    if (file == NULL)
+    {
         perror("Error opening the binary file");
         exit(1);
     }
@@ -144,11 +160,15 @@ int searchByNumber(const char *binaryFile, int targetNumber, int structType) {
     void *record = NULL;
     int recordSize = 0;
 
-    if (structType == 1) {
+    // This is used because the structs Record and Index are different
+    if (structType == 1)
+    {
         struct Record tempRecord;
         recordSize = sizeof(struct Record);
         record = &tempRecord;
-    } else if (structType == 2) {
+    }
+    else if (structType == 2)
+    {
         struct Index tempIndex;
         recordSize = sizeof(struct Index);
         record = &tempIndex;
@@ -162,32 +182,46 @@ int searchByNumber(const char *binaryFile, int targetNumber, int structType) {
     long start = 0;
     long end = (fileSize / recordSize) - 1;
 
-    while (start <= end) {
+    while (start <= end)
+    {
         long middle = (start + end) / 2;
         fseek(file, middle * recordSize, SEEK_SET);
         fread(record, recordSize, 1, file);
         comparisons++;
 
-        if (structType == 1) {
+        if (structType == 1)
+        {
             struct Record *record1 = (struct Record *)record;
-            if (record1->number == targetNumber) {
+            if (record1->number == targetNumber)
+            {
                 found = 1;
                 fclose(file);
                 return middle;
-            } else if (record1->number < targetNumber) {
+            }
+            else if (record1->number < targetNumber)
+            {
                 start = middle + 1;
-            } else {
+            }
+            else
+            {
                 end = middle - 1;
             }
-        } else if (structType == 2) {
+        }
+        else if (structType == 2)
+        {
             struct Index *record2 = (struct Index *)record;
-            if (record2->number == targetNumber) {
+            if (record2->number == targetNumber)
+            {
                 found = 1;
                 fclose(file);
                 return record2->offset;
-            } else if (record2->number < targetNumber) {
+            }
+            else if (record2->number < targetNumber)
+            {
                 start = middle + 1;
-            } else {
+            }
+            else
+            {
                 end = middle - 1;
             }
         }
@@ -195,12 +229,15 @@ int searchByNumber(const char *binaryFile, int targetNumber, int structType) {
 
     fclose(file);
 
-    return -1; // Indica que o registro não foi encontrado
+    return -1; // Register not found
 }
 
-int searchByName(const char *indexFileName, char *name){
+// Search by Name field
+int searchByName(const char *indexFileName, char *name)
+{
     FILE *binFile = fopen(indexFileName, "rb");
-    if (!binFile) {
+    if (!binFile)
+    {
         printf("Error opening the binary file.\n");
         return 0;
     }
@@ -208,10 +245,12 @@ int searchByName(const char *indexFileName, char *name){
     fillWithSpaces(name, NAME);
 
     struct IndexName record;
-    long recordSize =  sizeof(struct IndexName);
+    long recordSize = sizeof(struct IndexName);
 
-    while (fread(&record, sizeof(struct IndexName), 1, binFile)) {
-        if (strcmp(record.name, name) == 0){
+    while (fread(&record, sizeof(struct IndexName), 1, binFile))
+    {
+        if (strcmp(record.name, name) == 0)
+        {
             fclose(binFile);
             return record.offset;
         }
@@ -222,16 +261,19 @@ int searchByName(const char *indexFileName, char *name){
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
-//Arquivo de indice baseado no campo "Number"
-void createIndexFile(const char *binFileName, const char *indexFileName) {
+// Index file based on field "Number"
+void createIndexFile(const char *binFileName, const char *indexFileName)
+{
     FILE *binFile = fopen(binFileName, "rb");
-    if (!binFile) {
+    if (!binFile)
+    {
         printf("Error opening the binary file.\n");
         return;
     }
 
     FILE *indexFile = fopen(indexFileName, "wb");
-    if (!indexFile) {
+    if (!indexFile)
+    {
         printf("Error creating the index file.\n");
         fclose(binFile);
         return;
@@ -242,7 +284,8 @@ void createIndexFile(const char *binFileName, const char *indexFileName) {
 
     long binOffset = 0;
 
-    while (fread(&record, sizeof(struct Record), 1, binFile)) {
+    while (fread(&record, sizeof(struct Record), 1, binFile))
+    {
         index.number = record.number;
         index.offset = binOffset;
         fwrite(&index, sizeof(struct Index), 1, indexFile);
@@ -255,17 +298,21 @@ void createIndexFile(const char *binFileName, const char *indexFileName) {
 
     printf("Index file created successfully.\n");
 }
-//Mostrar arquivo de índice
-void showIndexFile(const char *indexFileName) {
+
+// Show index file "Number" - Used for test
+void showIndexFile(const char *indexFileName)
+{
     FILE *indexFile = fopen(indexFileName, "rb");
-    if (!indexFile) {
+    if (!indexFile)
+    {
         printf("Error opening the index file.\n");
         return;
     }
 
     struct Index index;
 
-    while (fread(&index, sizeof(struct Index), 1, indexFile)) {
+    while (fread(&index, sizeof(struct Index), 1, indexFile))
+    {
         printf("Number: %d, Offset: %ld\n", index.number, index.offset);
     }
 
@@ -273,20 +320,24 @@ void showIndexFile(const char *indexFileName) {
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
-//AVL
+// AVL
 // Função auxiliar para calcular o máximo de dois inteiros
-int max(int a, int b) {
+int max(int a, int b)
+{
     return (a > b) ? a : b;
 }
 // Função auxiliar para obter a altura de um nodo da árvore
-int height(struct TreeNode *node) {
-    if (node == NULL) {
+int height(struct TreeNode *node)
+{
+    if (node == NULL)
+    {
         return 0;
     }
     return node->height;
 }
 // Função para criar um novo nodo da árvore
-struct TreeNode *newTreeNode(char category[CATEGORY]) {
+struct TreeNode *newTreeNode(char category[CATEGORY])
+{
     struct TreeNode *node = (struct TreeNode *)malloc(sizeof(struct TreeNode));
     strcpy(node->category, category);
     node->recordNumbers = NULL;
@@ -296,7 +347,8 @@ struct TreeNode *newTreeNode(char category[CATEGORY]) {
     return node;
 }
 // Função para realizar uma rotação à direita
-struct TreeNode *rightRotate(struct TreeNode *y) {
+struct TreeNode *rightRotate(struct TreeNode *y)
+{
     struct TreeNode *x = y->left;
     struct TreeNode *T2 = x->right;
 
@@ -311,7 +363,8 @@ struct TreeNode *rightRotate(struct TreeNode *y) {
     return x;
 }
 // Função para realizar uma rotação à esquerda
-struct TreeNode *leftRotate(struct TreeNode *x) {
+struct TreeNode *leftRotate(struct TreeNode *x)
+{
     struct TreeNode *y = x->right;
     struct TreeNode *T2 = y->left;
 
@@ -326,15 +379,19 @@ struct TreeNode *leftRotate(struct TreeNode *x) {
     return y;
 }
 // Função para obter o fator de balanceamento de um nodo
-int getBalance(struct TreeNode *node) {
-    if (node == NULL) {
+int getBalance(struct TreeNode *node)
+{
+    if (node == NULL)
+    {
         return 0;
     }
     return height(node->left) - height(node->right);
 }
 // Função para inserir um número de registro em uma categoria na árvore AVL
-struct RecordNumberNode *insertRecordNumber(struct RecordNumberNode *node, int number) {
-    if (node == NULL) {
+struct RecordNumberNode *insertRecordNumber(struct RecordNumberNode *node, int number)
+{
+    if (node == NULL)
+    {
         struct RecordNumberNode *newNode = (struct RecordNumberNode *)malloc(sizeof(struct RecordNumberNode));
         newNode->number = number;
         newNode->next = NULL;
@@ -344,98 +401,103 @@ struct RecordNumberNode *insertRecordNumber(struct RecordNumberNode *node, int n
     node->next = insertRecordNumber(node->next, number);
     return node;
 }
-// Função para inserir um nodo na árvore AVL
-struct TreeNode *insertTreeNode(struct TreeNode *node, char category[CATEGORY], int number) {
-    // Realiza a inserção normal de um nodo de árvore binária de busca
-    if (node == NULL) {
+// Insert node into AVL
+struct TreeNode *insertTreeNode(struct TreeNode *node, char category[CATEGORY], int number)
+{
+    // Normal insertion of a binary search tree node
+    if (node == NULL)
+    {
         return newTreeNode(category);
     }
 
-    if (strcmp(category, node->category) < 0) {
+    if (strcmp(category, node->category) < 0)
+    {
         node->left = insertTreeNode(node->left, category, number);
-    } else if (strcmp(category, node->category) > 0) {
+    }
+    else if (strcmp(category, node->category) > 0)
+    {
         node->right = insertTreeNode(node->right, category, number);
-    } else {
-        // A categoria já existe, adicione o número de registro à lista
+    }
+    else
+    {
+        // Category already exists, add to list
         node->recordNumbers = insertRecordNumber(node->recordNumbers, number);
         return node;
     }
 
-    // Atualiza a altura do nodo atual
+    // Update current note height 
     node->height = 1 + max(height(node->left), height(node->right));
 
-    // Obter o fator de balanceamento deste nodo para verificar se ele se tornou desequilibrado
+    // Get balance to verify if node became unbalanced
     int balance = getBalance(node);
 
-    // Casos de desequilíbrio
-
-    // Esquerda-Esquerda
-    if (balance > 1 && strcmp(category, node->left->category) < 0) {
+    // Unbalanced cases
+    // Left-Left
+    if (balance > 1 && strcmp(category, node->left->category) < 0)
+    {
         return rightRotate(node);
     }
-
-    // Direita-Direita
-    if (balance < -1 && strcmp(category, node->right->category) > 0) {
+    // Right-Right
+    if (balance < -1 && strcmp(category, node->right->category) > 0)
+    {
         return leftRotate(node);
     }
-
-    // Esquerda-Direita
-    if (balance > 1 && strcmp(category, node->left->category) > 0) {
+    // Left-Right
+    if (balance > 1 && strcmp(category, node->left->category) > 0)
+    {
         node->left = leftRotate(node->left);
         return rightRotate(node);
     }
-
-    // Direita-Esquerda
-    if (balance < -1 && strcmp(category, node->right->category) < 0) {
+    // Right-Left
+    if (balance < -1 && strcmp(category, node->right->category) < 0)
+    {
         node->right = rightRotate(node->right);
         return leftRotate(node);
     }
 
     return node;
 }
-// Função para realizar uma travessia em ordem da árvore e listar categorias e números
-void inOrderTraversal(struct TreeNode *root) {
-    if (root != NULL) {
-        inOrderTraversal(root->left);
-        printf("Category: %s\n", root->category);
-        struct RecordNumberNode *recordNode = root->recordNumbers;
-        while (recordNode != NULL) {
-            printf("  Number: %d\n", recordNode->number);
-            recordNode = recordNode->next;
-        }
-        inOrderTraversal(root->right);
-    }
-}
 // Função para pesquisar por uma categoria na árvore AVL e retornar a lista de números
-struct RecordNumberNode *searchCategory(struct TreeNode *root, char category[CATEGORY]) {
-    if (root == NULL) {
+struct RecordNumberNode *searchCategory(struct TreeNode *root, char category[CATEGORY])
+{
+    if (root == NULL)
+    {
         return NULL;
     }
 
     int cmpResult = strcmp(category, root->category);
 
-    if (cmpResult == 0) {
+    if (cmpResult == 0)
+    {
         return root->recordNumbers;
-    } else if (cmpResult < 0) {
+    }
+    else if (cmpResult < 0)
+    {
         return searchCategory(root->left, category);
-    } else {
+    }
+    else
+    {
         return searchCategory(root->right, category);
     }
 }
-//Criar AVL
-struct TreeNode *createAVL(const char *binaryFile) {
+// Create AVL
+struct TreeNode *createAVL(const char *binaryFile)
+{
     struct TreeNode *root = NULL;
     FILE *binFile = fopen(binaryFile, "rb");
 
-    if (!binFile) {
+    if (!binFile)
+    {
         printf("Error opening the binary file.\n");
-        return NULL; // Retorne NULL em caso de erro
+        return NULL;
     }
 
     struct Record record;
-    while (fread(&record, sizeof(struct Record), 1, binFile)) {
-        //Limite de memória
-        if(record.number<LIMIT){
+    while (fread(&record, sizeof(struct Record), 1, binFile))
+    {
+        // Memory limit
+        if (record.number < LIMIT)
+        {
             root = insertTreeNode(root, record.category, record.number);
         }
     }
@@ -446,11 +508,29 @@ struct TreeNode *createAVL(const char *binaryFile) {
     return root;
 }
 
+// Show AVL - Test
+void showAVL(struct TreeNode *root)
+{
+    if (root != NULL)
+    {
+        showAVL(root->left);
+        printf("Category: %s\n", root->category);
+        struct RecordNumberNode *recordNode = root->recordNumbers;
+        while (recordNode != NULL)
+        {
+            printf("  Number: %d\n", recordNode->number);
+            recordNode = recordNode->next;
+        }
+        showAVL(root->right);
+    }
+}
+
 //---------------------------------------------------------------------------------------------------------------------------------------------
-//Indice baseado no campo "Rating", em memória
-//Cria um novo nodo de cabeçalho
-struct RatingIndexHashNode * newHashNode(int hash, struct RatingIndexHashNode *next){
-    struct RatingIndexHashNode *new = (struct RatingIndexHashNode*)malloc(sizeof(struct RatingIndexHashNode));
+// Indice baseado no campo "Rating", em memória
+// Cria um novo nodo de cabeçalho
+struct RatingIndexHashNode *newHashNode(int hash, struct RatingIndexHashNode *next)
+{
+    struct RatingIndexHashNode *new = (struct RatingIndexHashNode *)malloc(sizeof(struct RatingIndexHashNode));
     new->hash = hash;
     new->next = next;
     new->count = 0;
@@ -458,9 +538,10 @@ struct RatingIndexHashNode * newHashNode(int hash, struct RatingIndexHashNode *n
 
     return new;
 }
-//Cria um novo nodo para o registro
-struct RatingIndexNode * newRatingNode(int number, float rating, struct RatingIndexNode *last) {
-    struct RatingIndexNode *new = (struct RatingIndexNode*)malloc(sizeof(struct RatingIndexNode));
+// Cria um novo nodo para o registro
+struct RatingIndexNode *newRatingNode(int number, float rating, struct RatingIndexNode *last)
+{
+    struct RatingIndexNode *new = (struct RatingIndexNode *)malloc(sizeof(struct RatingIndexNode));
     new->number = number;
     new->rating = rating;
     new->last = last;
@@ -468,14 +549,17 @@ struct RatingIndexNode * newRatingNode(int number, float rating, struct RatingIn
 
     return new;
 }
-//Grea o HASH
-int getHash(struct Record record){
-    return record.rating*10;
+// Gera o HASH
+int getHash(struct Record record)
+{
+    return record.rating * 10;
 }
-//Cria o índice de Rating em memória
-void createIndexMemoryByRating(const char *binFileName) {
+// Cria o índice de Rating em memória
+void createIndexMemoryByRating(const char *binFileName)
+{
     FILE *binFile = fopen(binFileName, "rb");
-    if (!binFile) {
+    if (!binFile)
+    {
         printf("Error opening the binary file.\n");
         return;
     }
@@ -485,28 +569,31 @@ void createIndexMemoryByRating(const char *binFileName) {
     int i = 0; /*DEBUG*/
 
     while (
-        i<LIMIT &&  /*DEBUG*/
-        fread(&record, sizeof(struct Record), 1, binFile)
-    ) {
-        
+        i < LIMIT && /*DEBUG*/
+        fread(&record, sizeof(struct Record), 1, binFile))
+    {
+
         i++; /*DEBUG*/
-        
+
         int hash = getHash(record);
 
-        if (hashIndex == NULL) {
+        if (hashIndex == NULL)
+        {
             hashIndex = newHashNode(hash, NULL);
             hashIndex->firts = newRatingNode(record.number, record.rating, NULL);
             hashIndex->count = 1;
         }
-        else {
+        else
+        {
             struct RatingIndexHashNode *cur = hashIndex;
-            while(cur->next != NULL && cur->hash < hash && (cur->next)->hash < hash)
+            while (cur->next != NULL && cur->hash < hash && (cur->next)->hash < hash)
                 cur = cur->next;
 
             if (cur->next != NULL && (cur->next)->hash == hash)
                 cur = cur->next;
 
-            if (cur->hash == hash) {
+            if (cur->hash == hash)
+            {
                 struct RatingIndexNode *curApp = cur->firts;
                 cur->count++;
 
@@ -515,7 +602,8 @@ void createIndexMemoryByRating(const char *binFileName) {
 
                 curApp->next = newRatingNode(record.number, record.rating, curApp);
             }
-            else {
+            else
+            {
                 cur->next = newHashNode(hash, cur->next);
                 (cur->next)->firts = newRatingNode(record.number, record.rating, NULL);
                 (cur->next)->count = 1;
@@ -527,13 +615,16 @@ void createIndexMemoryByRating(const char *binFileName) {
 
     printf("Hash Index created successfully.\n");
 }
-void printIndexMemoryByRating() {
+void printIndexMemoryByRating()
+{
     struct RatingIndexHashNode *curHash = hashIndex;
-    while (curHash != NULL) {
+    while (curHash != NULL)
+    {
         printf("\nHash: %d - Qtd: %d\n", curHash->hash, curHash->count);
-        
+
         struct RatingIndexNode *cur = curHash->firts;
-        while(cur != NULL) {
+        while (cur != NULL)
+        {
             printf("%d (%.1f) | ", cur->number, cur->rating);
 
             cur = cur->next;
@@ -543,26 +634,30 @@ void printIndexMemoryByRating() {
     }
 }
 //---------------------------------------------------------------------------------------------------------------------------------------------
-//Arquivo de indice baseado no campo "Nome"
-//Cria um novo nodo para o registro
-struct IndexName *newIndexNameStruct(char *name, long offSet) {
-    struct IndexName *new = (struct IndexName*)malloc(sizeof(struct IndexName));
+// Arquivo de indice baseado no campo "Nome"
+// Cria um novo nodo para o registro
+struct IndexName *newIndexNameStruct(char *name, long offSet)
+{
+    struct IndexName *new = (struct IndexName *)malloc(sizeof(struct IndexName));
     strcpy(new->name, name);
     fillWithSpaces(new->name, NAME);
     new->offset = offSet;
 
     return new;
 }
-//Cria o índice de Name em disco
-void createIndexFileByName(const char *binFileName, const char *indexFileName) {
+// Cria o índice de Name em disco
+void createIndexFileByName(const char *binFileName, const char *indexFileName)
+{
     FILE *binFile = fopen(binFileName, "rb");
-    if (!binFile) {
+    if (!binFile)
+    {
         printf("Error opening the binary file.\n");
         return;
     }
 
     FILE *indexFile = fopen(indexFileName, "wb");
-    if (!indexFile) {
+    if (!indexFile)
+    {
         printf("Error creating the index file.\n");
         fclose(binFile);
         return;
@@ -572,8 +667,9 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
 
     x = 0;
 
-    for (i = 65; i <= 91; i++) {
-            
+    for (i = 65; i <= 91; i++)
+    {
+
         struct Record record;
         long binOffset = 0;
 
@@ -584,23 +680,26 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
 
         while (
             // j<=LIMIT &&  /*DEBUG*/
-            fread(&record, sizeof(struct Record), 1, binFile)
-        ) {
-            
+            fread(&record, sizeof(struct Record), 1, binFile))
+        {
+
             j++; /*DEBUG*/
 
-            if (record.name[0] == i || (i == 91 && (record.name[0] < 65 || record.name[0] > 90))) {
+            if (record.name[0] == i || (i == 91 && (record.name[0] < 65 || record.name[0] > 90)))
+            {
                 struct IndexName *index = newIndexNameStruct(record.name, binOffset);
 
-                if (indexList == NULL) {
-                    indexList = (struct IndexNameList*)malloc(sizeof(struct IndexNameList));
+                if (indexList == NULL)
+                {
+                    indexList = (struct IndexNameList *)malloc(sizeof(struct IndexNameList));
                     indexList->ix = index;
                     indexList->next = NULL;
                 }
-                else {
+                else
+                {
                     struct IndexNameList *cur = indexList;
                     struct IndexNameList *ant = NULL;
-                    while(cur->next != NULL && strcmp((cur->ix)->name, index->name) <= 0)
+                    while (cur->next != NULL && strcmp((cur->ix)->name, index->name) <= 0)
                     {
                         ant = cur;
                         cur = cur->next;
@@ -608,33 +707,38 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
 
                     x++;
 
-                    struct IndexNameList *new = (struct IndexNameList*)malloc(sizeof(struct IndexNameList));
+                    struct IndexNameList *new = (struct IndexNameList *)malloc(sizeof(struct IndexNameList));
                     new->ix = index;
 
-                    if (cur->next == NULL) {
+                    if (cur->next == NULL)
+                    {
                         new->next = NULL;
-                        cur->next = new; 
+                        cur->next = new;
                     }
-                    else {
-                        if (ant != NULL) {
-                                ant->next = new;
-                                new->next = cur;
+                    else
+                    {
+                        if (ant != NULL)
+                        {
+                            ant->next = new;
+                            new->next = cur;
                         }
-                        else {
+                        else
+                        {
                             new->next = cur;
                             indexList = new;
                         }
-                    }                
+                    }
                 }
-            }            
+            }
 
             binOffset += sizeof(struct Record);
         }
 
-        while(indexList!=NULL) {
+        while (indexList != NULL)
+        {
             fwrite(indexList->ix, sizeof(struct IndexName), 1, indexFile);
             indexList = indexList->next;
-                // x++;
+            // x++;
         }
     }
 
@@ -643,17 +747,20 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName) {
 
     printf("Index created successfully. Registers: %ld.\n", x);
 }
-void printIndexFileByName(const char *indexFileName) {
+void printIndexFileByName(const char *indexFileName)
+{
     FILE *indexFile = fopen(indexFileName, "rb");
-    if (!indexFile) {
+    if (!indexFile)
+    {
         printf("Error opening the index file.\n");
         return;
     }
 
     struct IndexName index;
-    int i = 0;    
-    
-    while (fread(&index, sizeof(struct IndexName), 1, indexFile)) {
+    int i = 0;
+
+    while (fread(&index, sizeof(struct IndexName), 1, indexFile))
+    {
         printf("Name: %s | OffSet: %ld\n", index.name, index.offset);
         i++;
     }
@@ -661,79 +768,100 @@ void printIndexFileByName(const char *indexFileName) {
     printf("Registers: %d", i);
 
     fclose(indexFile);
-
 }
 //---------------------------------------------------------------------------------------------------------------------------------------------
 // Case 1
-void funcCase1(struct TreeNode *rootAVL, const char *indexNumberFile, const char *binFile){
-    char searchedCategory[CATEGORY] = "Education                    "; 
+void funcCase1(struct TreeNode *rootAVL, const char *indexNumberFile, const char *binFile)
+{
+    char searchedCategory[CATEGORY] = "Education";
+    fillWithSpaces(searchedCategory, CATEGORY);
     struct RecordNumberNode *categoryNumbers = searchCategory(rootAVL, searchedCategory);
-    if (categoryNumbers) {
+    if (categoryNumbers)
+    {
         printf("Games in the '%s' category:\n", searchedCategory);
         struct RecordNumberNode *current = categoryNumbers;
-        while (current != NULL) {
+        while (current != NULL)
+        {
             int targetNumber = current->number;
-            
+
             // Consultar o arquivo de índice para obter a posição do registro
             long idxOffset = searchByNumber(indexNumberFile, targetNumber, 2);
-            
-            if (idxOffset != -1) {
+
+            if (idxOffset != -1)
+            {
                 FILE *binaryFile = fopen(binFile, "rb");
-                if (!binaryFile) {
+                if (!binaryFile)
+                {
                     printf("Error opening the binary file.\n");
                     break;
                 }
-                
+
                 fseek(binaryFile, idxOffset, SEEK_SET);
                 struct Record record;
-                if (fread(&record, sizeof(struct Record), 1, binaryFile)) {
+                if (fread(&record, sizeof(struct Record), 1, binaryFile))
+                {
                     printf("Number: %d - Name: %s\n", record.number, record.name);
                 }
-                
+
                 fclose(binaryFile);
-            } else {
+            }
+            else
+            {
                 printf("Record with number %d not found in the index.\n", targetNumber);
             }
 
             current = current->next;
         }
-    } else {
+    }
+    else
+    {
         printf("Category '%s' not found.\n", searchedCategory);
     }
 }
 
 // Case 2
-void funcCase2(const char *indexNumberFile, const char *binFile, int targetNumber){
+void funcCase2(const char *indexNumberFile, const char *binFile, int targetNumber)
+{
 
     long idxOffset = searchByNumber(indexNumberFile, targetNumber, 2);
-    
-    if (idxOffset != -1) {
+
+    if (idxOffset != -1)
+    {
         FILE *binaryFile = fopen(binFile, "rb");
-        if (!binaryFile) {
+        if (!binaryFile)
+        {
             printf("Error opening the binary file.\n");
         }
-        
+
         fseek(binaryFile, idxOffset, SEEK_SET);
         struct Record record;
-        if (fread(&record, sizeof(struct Record), 1, binaryFile)) {
+        if (fread(&record, sizeof(struct Record), 1, binaryFile))
+        {
             printf("Infos:\n\nNumber: %d\nName: %s\nCategory: %s\nRating: %f\nRating count: %d\nInstalls: %s\nFree: %s\nSize: %s\nLast updated: %s\nContent rating: %s\n\n\n", record.number, record.name, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
         }
-        
+
         fclose(binaryFile);
-    } else {
+    }
+    else
+    {
         printf("Record with number %d not found in the index.\n", targetNumber);
     }
 }
 
-void funcCase3(const char *binFile, float rate){
+// Case 3
+void funcCase3(const char *binFile, float rate)
+{
     struct RatingIndexHashNode *curHash = hashIndex;
-    
+
     printf("App's: ");
-    while (curHash != NULL) {
-        if (curHash->hash > (rate*10)) {
+    while (curHash != NULL)
+    {
+        if (curHash->hash > (rate * 10))
+        {
             struct RatingIndexNode *cur = curHash->firts;
 
-            while (cur != NULL) {
+            while (cur != NULL)
+            {
                 printf("App number: %d - Rate: %.1f\n", cur->number, cur->rating);
                 cur = cur->next;
             }
@@ -743,48 +871,59 @@ void funcCase3(const char *binFile, float rate){
     }
 }
 
-void funcCase4(const char *indexNameFile, const char *binFile, char *name){
+// Case 4
+void funcCase4(const char *indexNameFile, const char *binFile, char *name)
+{
     long idxOffset = searchByName(indexNameFile, name);
 
-    if (idxOffset != -1) {
+    if (idxOffset != -1)
+    {
         FILE *binaryFile = fopen(binFile, "rb");
-        if (!binaryFile) {
+        if (!binaryFile)
+        {
             printf("Error opening the binary file.\n");
         }
-        
+
         fseek(binaryFile, idxOffset, SEEK_SET);
         struct Record record;
-        if (fread(&record, sizeof(struct Record), 1, binaryFile)) {
+        if (fread(&record, sizeof(struct Record), 1, binaryFile))
+        {
             printf("Infos:\n\nNumber: %d\nName: %s\nCategory: %s\nRating: %f\nRating count: %d\nInstalls: %s\nFree: %s\nSize: %s\nLast updated: %s\nContent rating: %s\n\n\n", record.number, record.name, record.category, record.rating, record.rating_count, record.installs, record.free, record.size, record.last_updated, record.content_rating);
         }
-        
+
         fclose(binaryFile);
-    } else {
+    }
+    else
+    {
         printf("Record with number %s not found in the index.\n", name);
     }
 }
-//---------------------------------------------------------------------------------------------------------------------------------------------
-void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binaryFile, const char *indexNumberFile, const char *indexNameFile){
-    int choice = 0;    
 
-    do {
+//---------------------------------------------------------------------------------------------------------------------------------------------
+void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binaryFile, const char *indexNumberFile, const char *indexNameFile)
+{
+    int choice = 0;
+
+    do
+    {
         printf("1. What are the apps into 'Education' category?\n2. What are the informations about an specific app by name?\n3. What are the numbers of apps rated higher than X?\n4. What are the informations about an specific app by name\n\n");
         scanf("%d", &choice);
 
-        switch (choice) {
+        switch (choice)
+        {
         case 1:
             funcCase1(rootAVL, indexNumberFile, binaryFile);
             break;
         case 2:
             printf("What is the app number?\n");
-    
+
             int number;
             scanf("%d", &number);
             funcCase2(indexNumberFile, binaryFile, number);
             break;
         case 3:
             printf("What is the app rate?\n");
-    
+
             float rate;
             scanf("%f", &rate);
             funcCase3(binaryFile, rate);
@@ -801,13 +940,14 @@ void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binary
             choice = 0;
             printf("Invalid choice");
         }
-    } while (choice!=0);
+    } while (choice != 0);
 }
 
-
 //---------------------------------------------------------------------------------------------------------------------------------------------
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
+int main(int argc, char *argv[])
+{
+    if (argc != 2)
+    {
         printf("Error: <Generate .bin files (0/1)>");
         exit(0);
     }
@@ -817,27 +957,28 @@ int main(int argc, char *argv[]) {
     const char *indexNumberFile = "idxnumber.bin";
     const char *indexNameFile = "namesIndex.bin";
 
-    if (atoi(argv[1]) == 1) {
+    if (atoi(argv[1]) == 1)
+    {
         // Criação arquivo binário
         createBinaryFile(textFile, binaryFile);
 
-        //Criação do arquivo sequencial indexado campo numero
+        // Criação do arquivo sequencial indexado campo numero
         createIndexFile(binaryFile, indexNumberFile);
-        //showIndexFile(indexNumberFile);
-        
-        //Criação do arquivo indexado campo Name
+        // showIndexFile(indexNumberFile);
+
+        // Criação do arquivo indexado campo Name
         createIndexFileByName(binaryFile, indexNameFile);
-        //printIndexFileByName();
+        // printIndexFileByName();
     }
 
-    //Criação da AVL
+    // Criação da AVL
     struct TreeNode *root = createAVL(binaryFile);
+    // showAVL(root);
 
-    //Criação da Hash Table
-    createIndexMemoryByRating(binaryFile);
+    // Criação da Hash Table
+    //createIndexMemoryByRating(binaryFile);
 
-
-    //Mostrar menu
+    // Mostrar menu
     showMenu(root, textFile, binaryFile, indexNumberFile, indexNameFile);
 
     return 0;
