@@ -247,13 +247,29 @@ int searchByName(const char *indexFileName, char *name)
     struct IndexName record;
     long recordSize = sizeof(struct IndexName);
 
-    while (fread(&record, sizeof(struct IndexName), 1, binFile))
+    fseek(binFile, 0, SEEK_END);
+    long fileSize = ftell(binFile);
+    long start = 0;
+    long end = (fileSize / recordSize) - 1;
+
+    while (start <= end)
     {
-        if (strcmp(record.name, name) == 0)
+        long middle = (start + end) / 2;
+        fseek(binFile, middle * recordSize, SEEK_SET);
+        fread(&record, recordSize, 1, binFile);
+        int cmp = strcmp(record.name, name);
+        
+        if (cmp == 0)
         {
             fclose(binFile);
             return record.offset;
         }
+
+        if (cmp > 0)
+            end = middle-1;
+        else
+            start = middle+1;
+
     }
 
     fclose(binFile);
@@ -719,8 +735,20 @@ void createIndexFileByName(const char *binFileName, const char *indexFileName)
 
                     if (cur->next == NULL)
                     {
+                        if (strcmp((cur->ix)->name, index->name) > 0) {
+                            if (ant == NULL) {
+                                indexList = new;
+                            }
+                            else {
+                                ant->next = new;
+                            }
+
+                            new->next = cur;
+                        }
+                        else {
                         new->next = NULL;
                         cur->next = new;
+                        }
                     }
                     else
                     {
@@ -913,6 +941,7 @@ void showMenu(struct TreeNode *rootAVL, const char *textFile, const char *binary
 
     do
     {
+        choice = 0;
         printf("1. What are the apps into 'Education' category?\n2. What are the informations about an specific app by name?\n3. What are the numbers of apps rated higher than X?\n4. What are the informations about an specific app by name\n\n");
         scanf("%d", &choice);
 
@@ -975,7 +1004,7 @@ int main(int argc, char *argv[])
 
         // Criação do arquivo indexado campo Name
         createIndexFileByName(binaryFile, indexNameFile);
-        // printIndexFileByName();
+        // printIndexFileByName(indexNameFile);
     }
 
     // Criação da AVL
@@ -984,6 +1013,7 @@ int main(int argc, char *argv[])
 
     // Criação da Hash Table
     createIndexMemoryByRating(binaryFile);
+    // printIndexMemoryByRating();
 
     // Mostrar menu
     showMenu(root, textFile, binaryFile, indexNumberFile, indexNameFile);
