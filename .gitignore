@@ -2,3 +2,4 @@ apps.csv
 *.bin
 .vscode/*
 dsi*
+*.exe
