@@ -320,13 +320,14 @@ void showIndexFile(const char *indexFileName)
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------------
-// AVL
-// Função auxiliar para calcular o máximo de dois inteiros
+// AVL - https://www.programiz.com/dsa/avl-tree
+// Calculate the max between two integers
 int max(int a, int b)
 {
     return (a > b) ? a : b;
 }
-// Função auxiliar para obter a altura de um nodo da árvore
+
+// Get node height
 int height(struct TreeNode *node)
 {
     if (node == NULL)
@@ -335,7 +336,8 @@ int height(struct TreeNode *node)
     }
     return node->height;
 }
-// Função para criar um novo nodo da árvore
+
+// Create a new tree note
 struct TreeNode *newTreeNode(char category[CATEGORY])
 {
     struct TreeNode *node = (struct TreeNode *)malloc(sizeof(struct TreeNode));
@@ -346,48 +348,42 @@ struct TreeNode *newTreeNode(char category[CATEGORY])
     node->height = 1;
     return node;
 }
-// Função para realizar uma rotação à direita
+
+// Right rotate
 struct TreeNode *rightRotate(struct TreeNode *y)
 {
     struct TreeNode *x = y->left;
-    struct TreeNode *T2 = x->right;
+    struct TreeNode *auxTreeNode = x->right;
 
-    // Realiza a rotação
+    // Rotate
     x->right = y;
-    y->left = T2;
+    y->left = auxTreeNode;
 
-    // Atualiza alturas
+    // Update heights
     y->height = max(height(y->left), height(y->right)) + 1;
     x->height = max(height(x->left), height(x->right)) + 1;
 
     return x;
 }
-// Função para realizar uma rotação à esquerda
+
+// Left rotate
 struct TreeNode *leftRotate(struct TreeNode *x)
 {
     struct TreeNode *y = x->right;
-    struct TreeNode *T2 = y->left;
+    struct TreeNode *auxTreeNode = y->left;
 
-    // Realiza a rotação
+    // Rotate
     y->left = x;
-    x->right = T2;
+    x->right = auxTreeNode;
 
-    // Atualiza alturas
+    // Update heights
     x->height = max(height(x->left), height(x->right)) + 1;
     y->height = max(height(y->left), height(y->right)) + 1;
 
     return y;
 }
-// Função para obter o fator de balanceamento de um nodo
-int getBalance(struct TreeNode *node)
-{
-    if (node == NULL)
-    {
-        return 0;
-    }
-    return height(node->left) - height(node->right);
-}
-// Função para inserir um número de registro em uma categoria na árvore AVL
+
+// Insert a number record into the list of a category in AVL tree
 struct RecordNumberNode *insertRecordNumber(struct RecordNumberNode *node, int number)
 {
     if (node == NULL)
@@ -401,6 +397,7 @@ struct RecordNumberNode *insertRecordNumber(struct RecordNumberNode *node, int n
     node->next = insertRecordNumber(node->next, number);
     return node;
 }
+
 // Insert node into AVL
 struct TreeNode *insertTreeNode(struct TreeNode *node, char category[CATEGORY], int number)
 {
@@ -425,11 +422,18 @@ struct TreeNode *insertTreeNode(struct TreeNode *node, char category[CATEGORY], 
         return node;
     }
 
-    // Update current note height 
+    // Update current note height
     node->height = 1 + max(height(node->left), height(node->right));
 
     // Get balance to verify if node became unbalanced
-    int balance = getBalance(node);
+    int balance;
+    if (node == NULL)
+    {
+        balance = 0;
+    }
+    else{
+        balance = height(node->left) - height(node->right);
+    }
 
     // Unbalanced cases
     // Left-Left
@@ -457,7 +461,8 @@ struct TreeNode *insertTreeNode(struct TreeNode *node, char category[CATEGORY], 
 
     return node;
 }
-// Função para pesquisar por uma categoria na árvore AVL e retornar a lista de números
+
+// Search an specific category into AVL and return numbers list
 struct RecordNumberNode *searchCategory(struct TreeNode *root, char category[CATEGORY])
 {
     if (root == NULL)
@@ -469,6 +474,7 @@ struct RecordNumberNode *searchCategory(struct TreeNode *root, char category[CAT
 
     if (cmpResult == 0)
     {
+        // Return the beginning of list 
         return root->recordNumbers;
     }
     else if (cmpResult < 0)
@@ -480,6 +486,7 @@ struct RecordNumberNode *searchCategory(struct TreeNode *root, char category[CAT
         return searchCategory(root->right, category);
     }
 }
+
 // Create AVL
 struct TreeNode *createAVL(const char *binaryFile)
 {
@@ -976,7 +983,7 @@ int main(int argc, char *argv[])
     // showAVL(root);
 
     // Criação da Hash Table
-    //createIndexMemoryByRating(binaryFile);
+    createIndexMemoryByRating(binaryFile);
 
     // Mostrar menu
     showMenu(root, textFile, binaryFile, indexNumberFile, indexNameFile);
